@@ -1,1 +1,0 @@
-std::iter::Map<std::result::Iter<'_, Vec<dto::User::User>>, for<'a> fn(&'a dto::User::User) -> dto::UserResponse::UserResponse {service::UserService::UserService::to_response}>
