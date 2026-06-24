@@ -1,5 +1,0 @@
-/target
-.env
-*.pem
-*.key
-/.idea
