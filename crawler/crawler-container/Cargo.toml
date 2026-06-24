@@ -1,0 +1,18 @@
+[package]
+name = "crawler-container"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crawler-application = { path = "../crawler-application" }
+migration = { path = "../migration" }
+
+tokio = { workspace = true }
+axum = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tower-http = { workspace = true }
+sea-orm = { workspace = true }
+dotenvy = { workspace = true }
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
