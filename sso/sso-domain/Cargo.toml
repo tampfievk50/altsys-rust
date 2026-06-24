@@ -1,0 +1,17 @@
+[package]
+name = "sso-domain"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+bcrypt = { workspace = true }
+jsonwebtoken = { workspace = true }
+utoipa = { workspace = true }
+casbin = { workspace = true }

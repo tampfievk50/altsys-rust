@@ -1,0 +1,13 @@
+[package]
+name = "sso-dataaccess"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sso-domain = { path = "../sso-domain" }
+
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+sea-orm = { workspace = true }
