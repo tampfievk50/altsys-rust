@@ -15,10 +15,6 @@ use sso_application::openapi::ApiDoc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use sso_dataaccess::user::repository::UserSeaOrmRepository::UserSeaOrmRepository;
-use sso_dataaccess::role::repository::RoleSeaOrmRepository::RoleSeaOrmRepository;
-use sso_dataaccess::permission::repository::PermissionSeaOrmRepository::PermissionSeaOrmRepository;
-
 #[tokio::main]
 async fn main() {
     // Load .env file
