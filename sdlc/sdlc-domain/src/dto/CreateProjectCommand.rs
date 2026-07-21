@@ -1,0 +1,16 @@
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateProjectCommand {
+    pub tenant_id: Uuid,
+    pub name: String,
+    pub slug: String,
+    pub github_tool_id: Uuid,
+    pub default_branch: Option<String>,
+    pub jira_tool_id: Option<Uuid>,
+    pub build_command: Option<String>,
+    pub test_command: Option<String>,
+    pub coding_standards: Option<String>,
+    pub workflow_config: Option<String>,
+}

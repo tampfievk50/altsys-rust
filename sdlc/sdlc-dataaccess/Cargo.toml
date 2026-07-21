@@ -1,0 +1,22 @@
+[package]
+name = "sdlc-dataaccess"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sdlc-domain = { path = "../sdlc-domain" }
+
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+sea-orm = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Only GitHubExecutor (calls the real GitHub API) and PluginHttpDispatcher
+# (calls genuinely external third-party webhooks) still need this — every
+# cross-service call between the former platform/tools/knowledge/workflow/
+# agents/sdlc/automation services is now in-process.
+reqwest = { workspace = true }
+rig-core = { workspace = true }

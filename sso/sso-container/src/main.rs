@@ -4,6 +4,7 @@ use casbin::{CoreApi, DefaultModel, Enforcer, Model};
 use dotenvy::dotenv;
 use sea_orm::DatabaseConnection;
 use tokio::sync::RwLock;
+use tower_http::cors::CorsLayer;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 use migration::MigratorTrait;
@@ -46,11 +47,16 @@ async fn main() {
 
     // Build the router with Swagger UI
     let mut app = create_router(state);
-    
+
     // Add Swagger UI
     app = app.merge(
         SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()),
     );
+
+    // Browser-based clients (e.g. the admin panel) hit this from a different
+    // origin/port — without this, the browser blocks every request at the
+    // CORS preflight before it ever reaches the handler.
+    app = app.layer(CorsLayer::permissive());
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
     let addr = format!("0.0.0.0:{}", port);
