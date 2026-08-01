@@ -1,12 +1,12 @@
 [package]
-name = "sso-container"
+name = "scheduler-container"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sso-application = { path = "../sso-application" }
-sso-dataaccess = { path = "../sso-dataaccess" }
-sso-domain = { path = "../sso-domain" }
+scheduler-application = { path = "../scheduler-application" }
+scheduler-dataaccess = { path = "../scheduler-dataaccess" }
+scheduler-domain = { path = "../scheduler-domain" }
 migration = { path = "../migration" }
 
 tokio = { workspace = true }
@@ -16,8 +16,9 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 sea-orm = { workspace = true }
 sea-orm-migration = { workspace = true }
+casbin = { workspace = true }
 dotenvy = { workspace = true }
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 uuid.workspace = true
-bcrypt.workspace = true
+sea-orm-adapter = { version = "0.4.0", default-features = false, features = ["postgres", "runtime-tokio-rustls"] }

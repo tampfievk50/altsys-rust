@@ -1,4 +1,3 @@
 #![allow(non_snake_case)]
 pub mod AppConfig;
-pub mod CasbinConfig;
 pub mod DatabaseConfig;

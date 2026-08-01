@@ -1,11 +1,11 @@
 [package]
-name = "sso-application"
+name = "scheduler-application"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sso-domain = { path = "../sso-domain" }
-sso-dataaccess = { path = "../sso-dataaccess" }
+scheduler-domain = { path = "../scheduler-domain" }
+scheduler-dataaccess = { path = "../scheduler-dataaccess" }
 
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -17,5 +17,4 @@ chrono = { workspace = true }
 sea-orm = { workspace = true }
 jsonwebtoken = { workspace = true }
 casbin = { workspace = true }
-sea-orm-adapter = { version = "0.4.0", default-features = false, features = ["postgres", "runtime-tokio-rustls"] }
 utoipa = { workspace = true }

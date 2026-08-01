@@ -1,15 +1,12 @@
-use std::sync::Arc;
 use axum::Router;
-use casbin::{CoreApi, DefaultModel, Enforcer, Model};
 use dotenvy::dotenv;
-use sea_orm::DatabaseConnection;
-use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 use migration::MigratorTrait;
 
 use sso_application::config::AppConfig::create_app_state;
+use sso_application::config::CasbinConfig::CasbinConfig;
 use sso_application::config::DatabaseConfig::DatabaseConfig;
 use sso_application::rest::router::ApiRouter::create_router;
 use sso_application::openapi::ApiDoc;
@@ -40,7 +37,7 @@ async fn main() {
     migration::Migrator::up(&db, None).await.expect("Failed to run migrations");
 
     // Initialize Casbin Enforcer
-    let enforcer = init_casbin_enforcer(&db).await;
+    let enforcer = CasbinConfig::init_enforcer(&db).await;
 
     // Create AppState
     let state = create_app_state(db, enforcer).await;
@@ -64,36 +61,4 @@ async fn main() {
     info!("Server listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
-}
-
-async fn init_casbin_enforcer(db: &DatabaseConnection) -> Arc<RwLock<Enforcer>> {
-    info!("Initializing Casbin enforcer from database...");
-    
-    let model_text = r#"
-    [request_definition]
-    r = sub, obj, act
-    
-    [policy_definition]
-    p = sub, obj, act
-    
-    [role_definition]
-    g = _, _
-    
-    [policy_effect]
-    e = some(where (p.eft == allow))
-    
-    [matchers]
-    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || r.sub == "admin"
-    "#;
-    
-    let model = DefaultModel::from_str(model_text).await.expect("Failed to load Casbin model");
-    let adapter = sea_orm_adapter::SeaOrmAdapter::new(db.clone()).await.expect("Failed to create casbin sea-orm adapter");
-    
-    // Load policy from DB (SeaOrmAdapter will manage policies)
-    // Removed unused repos as SeaOrmAdapter accesses DB directly for casbin tables.
-    
-    // Casbin's API requires us to add policies to the enforcer after creation
-    let enforcer = Enforcer::new(model, adapter).await.expect("Failed to create enforcer");
-
-    Arc::new(RwLock::new(enforcer))
 }
