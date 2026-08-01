@@ -1,4 +1,3 @@
-use axum::Router;
 use dotenvy::dotenv;
 use tower_http::cors::CorsLayer;
 use tracing::{info, level_filters::LevelFilter};

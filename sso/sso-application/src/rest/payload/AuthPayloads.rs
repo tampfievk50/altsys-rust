@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use utoipa::ToSchema;
-use uuid::Uuid;
 
 use sso_domain::dto::LoginCommand::LoginCommand;
 

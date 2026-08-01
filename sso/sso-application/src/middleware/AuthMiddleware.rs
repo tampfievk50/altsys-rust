@@ -1,16 +1,13 @@
 use axum::{
     extract::{Request, State},
-    http::{header, StatusCode},
+    http::header,
     middleware::Next,
-    response::{IntoResponse, Response},
-    Json,
+    response::Response,
 };
 use std::sync::Arc;
-use tracing::error;
 
 use sso_domain::service::AuthService::AuthService;
 use crate::state::AppState::AppState;
-use crate::rest::response::ApiResponse::ApiResponse;
 use crate::exception::GlobalExceptionHandler::AppError;
 use sso_domain::r#enum::DomainError::DomainError;
 
