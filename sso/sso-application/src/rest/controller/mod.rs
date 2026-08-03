@@ -4,3 +4,4 @@ pub mod UserController;
 pub mod RoleController;
 pub mod PermissionController;
 pub mod AuthController;
+pub mod CasbinController;

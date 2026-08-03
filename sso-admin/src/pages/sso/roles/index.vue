@@ -3,9 +3,15 @@ definePage({
   meta: { navActiveLink: 'sso-roles' },
 })
 
+const route = useRoute()
+
+// Arriving from a role link (e.g. the Roles column on the Users page)
+// pre-selects that role's tenant and calls out the row so it's easy to spot.
+const highlightedRoleId = ref(route.query.role ?? null)
+
 const userData = useCookie('userData')
 const tenants = ref([])
-const selectedTenant = ref(userData.value?.tenantId ?? null)
+const selectedTenant = ref(route.query.tenant ?? userData.value?.tenantId ?? null)
 
 const loadTenants = async () => {
   tenants.value = await ssoApi('/api/v1/tenants')
@@ -77,41 +83,86 @@ const askDelete = id => {
 
 const doDelete = () => crud.remove(pendingDeleteId.value)
 
-// SSO has no "list permissions currently assigned to a role" endpoint, only
-// assign/unassign — so this is a blind assign/remove action, not a live
-// checklist of current state.
 const permDialogOpen = ref(false)
 const permDialogRole = ref(null)
-const permAction = ref('assign')
+const rolePermissions = ref([])
+const rolePermissionsLoading = ref(false)
 const permId = ref(null)
 const permError = ref('')
-const permSuccess = ref('')
+const permAssigning = ref(false)
+const assigningAll = ref(false)
+const removingPermissionId = ref(null)
 
-const openManagePermissions = role => {
-  permDialogRole.value = role
-  permAction.value = 'assign'
-  permId.value = null
+const loadRolePermissions = async () => {
+  rolePermissionsLoading.value = true
   permError.value = ''
-  permSuccess.value = ''
-  permDialogOpen.value = true
+  try {
+    rolePermissions.value = await ssoApi(`/api/v1/roles/${permDialogRole.value.id}/permissions`)
+  }
+  catch (err) {
+    permError.value = err.message || 'Failed to load permissions'
+  }
+  finally {
+    rolePermissionsLoading.value = false
+  }
 }
 
-const submitPermission = async () => {
+const openManagePermissions = async role => {
+  permDialogRole.value = role
+  permId.value = null
+  permError.value = ''
+  rolePermissions.value = []
+  permDialogOpen.value = true
+  await loadRolePermissions()
+}
+
+const assignPermission = async () => {
   if (!permId.value)
     return
 
   permError.value = ''
-  permSuccess.value = ''
+  permAssigning.value = true
   try {
-    if (permAction.value === 'assign')
-      await ssoApi(`/api/v1/roles/${permDialogRole.value.id}/permissions/${permId.value}`, { method: 'POST' })
-    else
-      await ssoApi(`/api/v1/roles/${permDialogRole.value.id}/permissions/${permId.value}`, { method: 'DELETE' })
-
-    permSuccess.value = permAction.value === 'assign' ? 'Permission assigned.' : 'Permission removed.'
+    await ssoApi(`/api/v1/roles/${permDialogRole.value.id}/permissions/${permId.value}`, { method: 'POST' })
+    permId.value = null
+    await loadRolePermissions()
   }
   catch (err) {
-    permError.value = err.message || 'Action failed'
+    permError.value = err.message || 'Failed to assign permission'
+  }
+  finally {
+    permAssigning.value = false
+  }
+}
+
+const assignAllPermissions = async () => {
+  permError.value = ''
+  assigningAll.value = true
+  try {
+    await ssoApi(`/api/v1/roles/${permDialogRole.value.id}/permissions/all`, { method: 'POST' })
+    permId.value = null
+    await loadRolePermissions()
+  }
+  catch (err) {
+    permError.value = err.message || 'Failed to assign all permissions'
+  }
+  finally {
+    assigningAll.value = false
+  }
+}
+
+const removePermission = async permission => {
+  permError.value = ''
+  removingPermissionId.value = permission.id
+  try {
+    await ssoApi(`/api/v1/roles/${permDialogRole.value.id}/permissions/${permission.id}`, { method: 'DELETE' })
+    await loadRolePermissions()
+  }
+  catch (err) {
+    permError.value = err.message || 'Failed to remove permission'
+  }
+  finally {
+    removingPermissionId.value = null
   }
 }
 
@@ -160,15 +211,47 @@ onMounted(async () => {
       :loading="crud.loading.value"
       item-value="id"
     >
+      <template #item.name="{ item }">
+        <span :class="{ 'font-weight-bold text-primary': item.id === highlightedRoleId }">
+          {{ item.name }}
+        </span>
+      </template>
       <template #item.actions="{ item }">
-        <IconBtn @click="openManagePermissions(item)">
+        <IconBtn
+          aria-label="Manage Permissions"
+          @click="openManagePermissions(item)"
+        >
           <VIcon icon="tabler-key" />
+          <VTooltip
+            activator="parent"
+            open-delay="500"
+          >
+            Manage Permissions
+          </VTooltip>
         </IconBtn>
-        <IconBtn @click="openEdit(item)">
+        <IconBtn
+          aria-label="Edit"
+          @click="openEdit(item)"
+        >
           <VIcon icon="tabler-pencil" />
+          <VTooltip
+            activator="parent"
+            open-delay="500"
+          >
+            Edit
+          </VTooltip>
         </IconBtn>
-        <IconBtn @click="askDelete(item.id)">
+        <IconBtn
+          aria-label="Delete"
+          @click="askDelete(item.id)"
+        >
           <VIcon icon="tabler-trash" />
+          <VTooltip
+            activator="parent"
+            open-delay="500"
+          >
+            Delete
+          </VTooltip>
         </IconBtn>
       </template>
     </VDataTable>
@@ -226,13 +309,10 @@ onMounted(async () => {
 
   <VDialog
     v-model="permDialogOpen"
-    max-width="500"
+    max-width="600"
   >
     <VCard :title="`Manage Permissions — ${permDialogRole?.name}`">
       <VCardText>
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          The SSO service doesn't expose a "current permissions" query, only assign/remove — pick a permission and an action.
-        </p>
         <VAlert
           v-if="permError"
           type="error"
@@ -241,35 +321,79 @@ onMounted(async () => {
         >
           {{ permError }}
         </VAlert>
-        <VAlert
-          v-if="permSuccess"
-          type="success"
-          variant="tonal"
+
+        <div class="d-flex justify-space-between align-center mb-2">
+          <p class="text-subtitle-2 mb-0">
+            Assigned permissions
+          </p>
+          <VBtn
+            size="small"
+            variant="tonal"
+            prepend-icon="tabler-checks"
+            :loading="assigningAll"
+            @click="assignAllPermissions"
+          >
+            Assign All
+          </VBtn>
+        </div>
+        <VProgressLinear
+          v-if="rolePermissionsLoading"
+          indeterminate
           class="mb-4"
+        />
+        <p
+          v-else-if="!rolePermissions.length"
+          class="text-body-2 text-medium-emphasis mb-4"
         >
-          {{ permSuccess }}
-        </VAlert>
+          No permissions assigned yet.
+        </p>
+        <VList
+          v-else
+          density="compact"
+          max-height="260"
+          class="mb-4 border rounded overflow-y-auto"
+        >
+          <VListItem
+            v-for="permission in rolePermissions"
+            :key="permission.id"
+          >
+            <VListItemTitle>{{ permission.name }}</VListItemTitle>
+            <VListItemSubtitle>{{ permission.action }} <code>{{ permission.resource }}</code></VListItemSubtitle>
+            <template #append>
+              <IconBtn
+                aria-label="Remove"
+                :loading="removingPermissionId === permission.id"
+                @click="removePermission(permission)"
+              >
+                <VIcon icon="tabler-trash" />
+                <VTooltip
+                  activator="parent"
+                  open-delay="500"
+                >
+                  Remove
+                </VTooltip>
+              </IconBtn>
+            </template>
+          </VListItem>
+        </VList>
+
+        <VDivider class="mb-4" />
+
+        <p class="text-subtitle-2 mb-2">
+          Assign a permission
+        </p>
         <VRow>
           <VCol cols="12">
-            <VRadioGroup
-              v-model="permAction"
-              inline
-            >
-              <VRadio
-                label="Assign"
-                value="assign"
-              />
-              <VRadio
-                label="Remove"
-                value="remove"
-              />
-            </VRadioGroup>
-          </VCol>
-          <VCol cols="12">
             <RemoteSelect
+              v-if="permDialogOpen && !rolePermissionsLoading"
               v-model="permId"
               label="Permission"
-              :fetch-options="() => ssoApi('/api/v1/permissions')"
+              :fetch-options="async () => {
+                const all = await ssoApi('/api/v1/permissions')
+                const assignedIds = new Set(rolePermissions.map(p => p.id))
+                return all.filter(p => !assignedIds.has(p.id))
+              }"
+              :item-title="p => `${p.name} — ${p.action} ${p.resource}`"
             />
           </VCol>
         </VRow>
@@ -284,9 +408,10 @@ onMounted(async () => {
         </VBtn>
         <VBtn
           :disabled="!permId"
-          @click="submitPermission"
+          :loading="permAssigning"
+          @click="assignPermission"
         >
-          Apply
+          Assign
         </VBtn>
       </VCardText>
     </VCard>

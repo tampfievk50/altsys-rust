@@ -15,4 +15,5 @@ pub trait UserPort: Send + Sync {
     async fn delete_user(&self, id: Uuid) -> Result<(), DomainError>;
     async fn assign_role(&self, user_id: Uuid, role_id: Uuid, tenant_id: Uuid) -> Result<(), DomainError>;
     async fn remove_role(&self, user_id: Uuid, role_id: Uuid) -> Result<(), DomainError>;
+    async fn find_role_ids_by_user(&self, user_id: Uuid) -> Result<Vec<Uuid>, DomainError>;
 }

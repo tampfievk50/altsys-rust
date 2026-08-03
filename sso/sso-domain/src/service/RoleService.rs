@@ -101,4 +101,9 @@ impl RolePort for RoleService {
         }
         Ok(())
     }
+
+    async fn find_permission_ids_by_role(&self, role_id: Uuid) -> Result<Vec<Uuid>, DomainError> {
+        let assignments = self.role_repository.find_permissions_by_role(role_id).await?;
+        Ok(assignments.iter().map(|rp| rp.permission_id).collect())
+    }
 }

@@ -20,6 +20,14 @@
         "**/*.vue"
       ],
       "customSyntax": "postcss-html"
+    },
+    {
+      "files": [
+        "src/@core/scss/base/placeholders/**/*.scss"
+      ],
+      "rules": {
+        "no-duplicate-selectors": null
+      }
     }
   ],
   "rules": {

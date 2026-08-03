@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Request, State},
+    extract::{OriginalUri, Request, State},
     middleware::Next,
     response::Response,
 };
@@ -26,13 +26,30 @@ pub async fn require_permission(
     if claims.username == "user1" {
         sub = "admin".to_string(); // Use a special subject for admin
     }
-    let obj = req.uri().path().to_string();
+    // `management_routes` is nested under "/api/v1" and this middleware is
+    // layered on the nested router, so `req.uri()` here has already had
+    // that prefix stripped by axum's nesting — it would never match a
+    // Permission.resource stored as the full documented path (e.g.
+    // "/api/v1/tenants"). `OriginalUri` is the pre-strip path axum sets
+    // aside in extensions specifically for this case.
+    let obj = req
+        .extensions()
+        .get::<OriginalUri>()
+        .map(|OriginalUri(uri)| uri.path().to_string())
+        .unwrap_or_else(|| req.uri().path().to_string());
     let act = req.method().as_str().to_string();
 
-    // 3. Check authorization using Casbin Enforcer
-    let enforcer = state.enforcer.read().await;
-    
-    match enforcer.enforce((sub, obj, act)) {
+    // 3. Check authorization using Casbin Enforcer. The read guard must be
+    // dropped before running the handler — otherwise it's held for the
+    // entire downstream request, and any handler that needs a write lock
+    // on the same enforcer (e.g. syncing a role/permission assignment)
+    // deadlocks against itself.
+    let allowed = {
+        let enforcer = state.enforcer.read().await;
+        enforcer.enforce((sub, obj, act))
+    };
+
+    match allowed {
         Ok(true) => {
             // User is authorized, proceed to the handler
             Ok(next.run(req).await)

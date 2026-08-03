@@ -17,8 +17,12 @@ use sso_domain::dto::PermissionResponse::PermissionResponse;
 use sso_domain::dto::TokenResponse::TokenResponse;
 
 use crate::rest::controller::{
-    AuthController, PermissionController, RoleController, TenantController, UserController,
+    AuthController, CasbinController, PermissionController, RoleController, TenantController, UserController,
 };
+use crate::rest::controller::CasbinController::{CasbinPoliciesResponse, CasbinSyncResponse};
+use crate::rest::controller::PermissionController::PermissionRefreshResult;
+use crate::rest::controller::RoleController::AssignAllPermissionsResult;
+use crate::permission_catalog::{PermissionCatalogDiff, PermissionCatalogEntry};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -36,6 +40,7 @@ use crate::rest::controller::{
         UserController::get_user,
         UserController::update_user,
         UserController::delete_user,
+        UserController::get_user_roles,
         UserController::assign_role,
         UserController::remove_role,
         RoleController::create_role,
@@ -43,13 +48,19 @@ use crate::rest::controller::{
         RoleController::get_role,
         RoleController::update_role,
         RoleController::delete_role,
+        RoleController::get_role_permissions,
+        RoleController::assign_all_permissions,
         RoleController::assign_permission,
         RoleController::remove_permission,
         PermissionController::create_permission,
         PermissionController::get_all_permissions,
+        PermissionController::preview_permission_refresh,
+        PermissionController::apply_permission_refresh,
         PermissionController::get_permission,
         PermissionController::update_permission,
         PermissionController::delete_permission,
+        CasbinController::list_policies,
+        CasbinController::sync_policies,
     ),
     components(
         schemas(
@@ -73,11 +84,22 @@ use crate::rest::controller::{
             ApiResponse<Vec<UserResponse>>,
             ApiResponse<Vec<RoleResponse>>,
             ApiResponse<Vec<PermissionResponse>>,
+            ApiResponse<CasbinPoliciesResponse>,
+            ApiResponse<CasbinSyncResponse>,
+            ApiResponse<PermissionCatalogDiff>,
+            ApiResponse<PermissionRefreshResult>,
+            ApiResponse<AssignAllPermissionsResult>,
             TenantResponse,
             UserResponse,
             RoleResponse,
             PermissionResponse,
             TokenResponse,
+            CasbinPoliciesResponse,
+            CasbinSyncResponse,
+            PermissionCatalogDiff,
+            PermissionCatalogEntry,
+            PermissionRefreshResult,
+            AssignAllPermissionsResult,
         )
     ),
     modifiers(&SecurityAddon),
@@ -87,6 +109,7 @@ use crate::rest::controller::{
         (name = "Users", description = "User management APIs"),
         (name = "Roles", description = "Role management APIs"),
         (name = "Permissions", description = "Permission management APIs"),
+        (name = "Casbin", description = "Casbin raw policy inspection APIs"),
     )
 )]
 pub struct ApiDoc;

@@ -15,4 +15,5 @@ pub trait RolePort: Send + Sync {
     async fn delete_role(&self, id: Uuid) -> Result<(), DomainError>;
     async fn assign_permission(&self, role_id: Uuid, permission_id: Uuid) -> Result<(), DomainError>;
     async fn remove_permission(&self, role_id: Uuid, permission_id: Uuid) -> Result<(), DomainError>;
+    async fn find_permission_ids_by_role(&self, role_id: Uuid) -> Result<Vec<Uuid>, DomainError>;
 }

@@ -104,11 +104,29 @@ onMounted(crud.fetchAll)
         {{ new Date(item.created_at).toLocaleString() }}
       </template>
       <template #item.actions="{ item }">
-        <IconBtn @click="openEdit(item)">
+        <IconBtn
+          aria-label="Edit"
+          @click="openEdit(item)"
+        >
           <VIcon icon="tabler-pencil" />
+          <VTooltip
+            activator="parent"
+            open-delay="500"
+          >
+            Edit
+          </VTooltip>
         </IconBtn>
-        <IconBtn @click="askDelete(item.id)">
+        <IconBtn
+          aria-label="Delete"
+          @click="askDelete(item.id)"
+        >
           <VIcon icon="tabler-trash" />
+          <VTooltip
+            activator="parent"
+            open-delay="500"
+          >
+            Delete
+          </VTooltip>
         </IconBtn>
       </template>
     </VDataTable>

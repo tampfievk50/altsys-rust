@@ -9,7 +9,7 @@ use crate::state::AppState::AppState;
 use crate::middleware::AuthMiddleware::require_auth;
 use crate::middleware::CasbinMiddleware::require_permission;
 use crate::rest::controller::{
-    AuthController, PermissionController, RoleController, TenantController, UserController,
+    AuthController, CasbinController, PermissionController, RoleController, TenantController, UserController,
 };
 
 pub fn create_router(state: Arc<AppState>) -> Router {
@@ -23,6 +23,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/users", post(UserController::create_user))
         .route("/tenants/{tenant_id}/users", get(UserController::get_users_by_tenant))
         .route("/users/{id}", get(UserController::get_user).put(UserController::update_user).delete(UserController::delete_user))
+        .route("/users/{id}/roles", get(UserController::get_user_roles))
         .route("/users/{id}/roles/{role_id}/{tenant_id}", post(UserController::assign_role))
         .route("/users/{id}/roles/{role_id}", delete(UserController::remove_role))
         
@@ -30,12 +31,19 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/roles", post(RoleController::create_role))
         .route("/tenants/{tenant_id}/roles", get(RoleController::get_roles_by_tenant))
         .route("/roles/{id}", get(RoleController::get_role).put(RoleController::update_role).delete(RoleController::delete_role))
+        .route("/roles/{id}/permissions", get(RoleController::get_role_permissions))
+        .route("/roles/{id}/permissions/all", post(RoleController::assign_all_permissions))
         .route("/roles/{id}/permissions/{permission_id}", post(RoleController::assign_permission).delete(RoleController::remove_permission))
         
         // Permissions
         .route("/permissions", get(PermissionController::get_all_permissions).post(PermissionController::create_permission))
+        .route("/permissions/refresh", get(PermissionController::preview_permission_refresh).post(PermissionController::apply_permission_refresh))
         .route("/permissions/{id}", get(PermissionController::get_permission).put(PermissionController::update_permission).delete(PermissionController::delete_permission))
-        
+
+        // Casbin
+        .route("/casbin/policies", get(CasbinController::list_policies))
+        .route("/casbin/sync", post(CasbinController::sync_policies))
+
         .layer(middleware::from_fn_with_state(state.clone(), require_permission))
         .layer(middleware::from_fn_with_state(state.clone(), require_auth));
 

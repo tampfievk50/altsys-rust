@@ -117,4 +117,9 @@ impl UserPort for UserService {
         }
         Ok(())
     }
+
+    async fn find_role_ids_by_user(&self, user_id: Uuid) -> Result<Vec<Uuid>, DomainError> {
+        let assignments = self.user_repository.find_roles_by_user(user_id).await?;
+        Ok(assignments.iter().map(|ur| ur.role_id).collect())
+    }
 }

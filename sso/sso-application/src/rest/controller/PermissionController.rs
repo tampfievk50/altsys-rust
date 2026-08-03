@@ -2,11 +2,23 @@ use std::sync::Arc;
 use axum::{extract::{Path, State}, Json};
 use uuid::Uuid;
 
+use serde::Serialize;
+use utoipa::ToSchema;
+
+use sso_domain::dto::CreatePermissionCommand::CreatePermissionCommand;
 use sso_domain::dto::PermissionResponse::PermissionResponse;
+use crate::casbin::CasbinSync;
+use crate::permission_catalog::{self, PermissionCatalogDiff};
 use crate::state::AppState::AppState;
 use crate::exception::GlobalExceptionHandler::AppError;
 use crate::rest::response::ApiResponse::ApiResponse;
 use crate::rest::payload::PermissionPayloads::{CreatePermissionRequest, UpdatePermissionRequest};
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PermissionRefreshResult {
+    pub created: usize,
+    pub orphaned: Vec<PermissionResponse>,
+}
 
 #[utoipa::path(
     post,
@@ -110,6 +122,61 @@ pub async fn delete_permission(
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<()>>, AppError> {
+    let permission = state.permission_service.find_permission_by_id(id).await?;
+
     state.permission_service.delete_permission(id).await?;
+
+    let mut enforcer = state.enforcer.write().await;
+    CasbinSync::revoke_all_for_permission(&mut enforcer, &permission.resource, &permission.action).await?;
+
     Ok(Json(ApiResponse::no_content()))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/permissions/refresh",
+    tag = "Permissions",
+    responses(
+        (status = 200, description = "Preview the diff between current API routes and the Permission catalog, without writing anything", body = ApiResponse<PermissionCatalogDiff>)
+    ),
+    security(
+        ("bearerAuth" = [])
+    )
+)]
+pub async fn preview_permission_refresh(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<ApiResponse<PermissionCatalogDiff>>, AppError> {
+    let existing = state.permission_service.find_all_permissions().await?;
+    Ok(Json(ApiResponse::success(permission_catalog::diff(&existing))))
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/permissions/refresh",
+    tag = "Permissions",
+    responses(
+        (status = 200, description = "Create a Permission row for every current API route missing one; existing rows are left untouched", body = ApiResponse<PermissionRefreshResult>)
+    ),
+    security(
+        ("bearerAuth" = [])
+    )
+)]
+pub async fn apply_permission_refresh(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<ApiResponse<PermissionRefreshResult>>, AppError> {
+    let existing = state.permission_service.find_all_permissions().await?;
+    let diff = permission_catalog::diff(&existing);
+
+    let mut created = 0;
+    for entry in &diff.missing {
+        state.permission_service.create_permission(CreatePermissionCommand {
+            name: entry.name.clone(),
+            action: entry.action.clone(),
+            resource: entry.resource.clone(),
+            description: entry.description.clone(),
+        }).await?;
+        created += 1;
+    }
+
+    Ok(Json(ApiResponse::success(PermissionRefreshResult { created, orphaned: diff.orphaned })))
 }

@@ -3,6 +3,7 @@ use axum::{extract::{Path, State}, Json};
 use uuid::Uuid;
 
 use sso_domain::dto::TenantResponse::TenantResponse;
+use crate::casbin::CasbinSync;
 use crate::state::AppState::AppState;
 use crate::exception::GlobalExceptionHandler::AppError;
 use crate::rest::response::ApiResponse::ApiResponse;
@@ -110,6 +111,18 @@ pub async fn delete_tenant(
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<()>>, AppError> {
+    let roles = state.role_service.find_roles_by_tenant(id).await?;
+    let users = state.user_service.find_users_by_tenant(id).await?;
+
     state.tenant_service.delete_tenant(id).await?;
+
+    let mut enforcer = state.enforcer.write().await;
+    for role in &roles {
+        CasbinSync::revoke_all_for_role(&mut enforcer, &role.name).await?;
+    }
+    for user in &users {
+        CasbinSync::revoke_all_for_user(&mut enforcer, &user.id.to_string()).await?;
+    }
+
     Ok(Json(ApiResponse::no_content()))
 }
